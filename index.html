@@ -5,40 +5,246 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dog Adoption</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .dog-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px; display: flex; gap: 20px; }
-        .dog-card img { width: 150px; height: 150px; border-radius: 4px; object-fit: cover; background-color: #eee; }
-        select { padding: 10px; width: 100%; margin-top: 5px; }
-        button { margin-top: 10px; padding: 10px 20px; cursor: pointer; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            color: #333;
+            background-color: #fff;
+        }
+        
+        /* Form Styling */
+        .form-container { 
+            background: #f0f4f8; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-bottom: 40px; 
+            border: 1px solid #e1e4e8;
+        }
+        #form-status {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            display: none; 
+            padding: 10px;
+            border-radius: 4px;
+        }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="email"], select { 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 15px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        button { 
+            background-color: #2da44e; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            width: 100%;
+        }
+        button:hover { background-color: #2c974b; }
+
+        /* CAPTCHA Styles */
+        .captcha-area {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        canvas {
+            background-color: #eee;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .refresh-btn {
+            background: none;
+            border: none;
+            color: #0969da;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-decoration: underline;
+            padding: 0;
+            width: auto;
+        }
+
+        /* Dog Card Styling */
+        .dog-card { 
+            border: 1px solid #e1e4e8; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 12px; 
+            display: flex; 
+            gap: 20px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .dog-card img { 
+            width: 150px; 
+            height: 150px; 
+            border-radius: 8px; 
+            object-fit: cover; 
+            background-color: #eee; 
+        }
+        .dog-info h2 { margin-top: 0; color: #0969da; }
+        
+        @media (max-width: 600px) {
+            .dog-card { flex-direction: column; }
+            .dog-card img { width: 100%; height: 200px; }
+            .captcha-area { flex-direction: column; align-items: flex-start; }
+        }
     </style>
 </head>
 <body>
 
-    <h1>Adopt a Dog</h1>
+    <h1 style="text-align: center; margin-bottom: 30px;">🐾 Adopt a Friend</h1>
 
-    <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 40px;">
+    <div class="form-container">
         <h3>Adoption Interest Form</h3>
-        <form>
+        
+        <form id="adoption-form">
+            
+            <label for="applicant-name">Your Name</label>
+            <input type="text" id="applicant-name" name="name" placeholder="Jane Doe" required>
+
+            <label for="applicant-email">Your Email</label>
+            <input type="email" id="applicant-email" name="email" placeholder="jane@example.com" required>
+
             <label for="dog-select">Which dog are you interested in?</label>
-            <select id="dog-select">
-                <option value="">-- Select a Dog --</option>
+            <select id="dog-select" name="dog_interest" required>
+                <option value="">-- Loading dogs... --</option>
             </select>
-            <br>
-            <button type="submit">Submit Inquiry</button>
+
+            <!-- CANVAS CAPTCHA AREA -->
+            <label>Security Check</label>
+            <div class="captcha-area">
+                <canvas id="captchaCanvas" width="150" height="50" title="Click to refresh"></canvas>
+                <button type="button" class="refresh-btn" onclick="drawCaptcha()">🔄 Refresh Code</button>
+            </div>
+            <input type="text" id="captcha-input" placeholder="Type the characters above" required>
+
+            <button type="submit">Send Inquiry</button>
         </form>
+        
+        <div id="form-status"></div>
     </div>
 
-    <hr>
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0;">
 
     <h3>Available Dogs</h3>
     <div id="dog-list">
-        <p>Loading dogs from Google Sheets...</p>
+        <p>Connecting to shelter database...</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 
     <script>
-        // YOUR LIVE GOOGLE SHEET URL
+        // --- CAPTCHA LOGIC ---
+        let captchaCode = "";
+
+        function drawCaptcha() {
+            const canvas = document.getElementById('captchaCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Generate Random Code
+            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No I, 1, O, 0 to avoid confusion
+            captchaCode = "";
+            for (let i = 0; i < 6; i++) {
+                captchaCode += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+
+            // Add "Noise" (Random lines)
+            for (let i = 0; i < 7; i++) {
+                ctx.strokeStyle = `rgba(0,0,0,${Math.random() * 0.5})`;
+                ctx.beginPath();
+                ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw Text with rotation and spacing
+            ctx.font = 'bold 24px Courier New';
+            ctx.fillStyle = '#333';
+            ctx.textBaseline = 'middle';
+            
+            for (let i = 0; i < captchaCode.length; i++) {
+                ctx.save();
+                // Move to position
+                ctx.translate(20 + i * 20, 25);
+                // Rotate randomly
+                const angle = (Math.random() - 0.5) * 0.4;
+                ctx.rotate(angle);
+                ctx.fillText(captchaCode[i], 0, 0);
+                ctx.restore();
+            }
+        }
+
+        // Draw first captcha on load
+        window.onload = function() {
+            drawCaptcha();
+            document.getElementById('captchaCanvas').addEventListener('click', drawCaptcha);
+        };
+
+
+        // --- FORM SUBMISSION ---
+        const form = document.getElementById("adoption-form");
+        // YOUR EXISTING GOOGLE SCRIPT URL
+        const googleScriptURL = 'https://script.google.com/macros/s/AKfycbxcHRCEmmZ62jwxX2WWCqKa0Gzpw9NIITNnrZY9qsU6omVFUPK4T7laRpLOPGd2PhfX5Q/exec'; 
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const status = document.getElementById("form-status");
+            const userCaptcha = document.getElementById('captcha-input').value.toUpperCase().replace(/\s/g, '');
+
+            // 1. VALIDATE CAPTCHA (Client-Side Check)
+            if (userCaptcha !== captchaCode) {
+                status.style.display = 'block';
+                status.style.backgroundColor = '#f8d7da';
+                status.style.color = '#721c24';
+                status.innerHTML = "❌ Incorrect Security Code. Please try again.";
+                return; // STOP HERE - Do not send to Google
+            }
+            
+            // 2. IF CORRECT, SEND TO GOOGLE
+            status.style.display = 'block';
+            status.style.backgroundColor = '#fff3cd';
+            status.style.color = '#856404';
+            status.innerHTML = "Sending inquiry...";
+
+            const data = new FormData(form);
+            
+            fetch(googleScriptURL, {
+                method: 'POST',
+                body: data,
+                mode: 'no-cors' 
+            }).then(() => {
+                status.style.backgroundColor = '#d4edda'; 
+                status.style.color = '#155724';
+                status.innerHTML = "✅ Thanks! We received your inquiry and will contact you soon.";
+                form.reset(); 
+                drawCaptcha(); // Reset captcha for next time
+            }).catch(error => {
+                console.error('Error!', error.message);
+                status.innerHTML = "❌ Oops! Network error. Please try again.";
+            });
+        }
+        form.addEventListener("submit", handleSubmit);
+
+        // --- LOAD DOGS (EXISTING) ---
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRSn1xYIlsB1bHdNSezkwS81MokP5oeAf59GVE34cehTYCCmObPxDj6hBsQ8Seb9uPwQed34yCVtnui/pub?gid=1163306207&single=true&output=csv';
 
         Papa.parse(csvUrl, {
@@ -48,32 +254,22 @@
                 const dogs = results.data;
                 const dogList = document.getElementById('dog-list');
                 const dogSelect = document.getElementById('dog-select');
-
-                // Clear "Loading..." text
                 dogList.innerHTML = '';
+                dogSelect.innerHTML = '<option value="">-- Select a Dog --</option>';
 
                 dogs.forEach(dog => {
-                    // Skip empty rows (common in Google Sheets)
-                    if(!dog.name) return;
-
-                    // 1. ADD TO DROPDOWN
+                    if(!dog.name) return; 
                     const option = document.createElement('option');
-                    option.value = dog.name;
-                    // Handle missing age gracefully
-                    const ageText = dog.age ? ` (${dog.age} years old)` : '';
-                    option.textContent = `${dog.name}${ageText}`;
+                    option.value = dog.name; 
+                    option.textContent = dog.name;
                     dogSelect.appendChild(option);
 
-                    // 2. ADD TO VISUAL LIST
                     const card = document.createElement('div');
                     card.className = 'dog-card';
-                    
-                    // Use a placeholder image if the URL is empty
                     const imageSrc = dog.image ? dog.image : 'https://via.placeholder.com/150?text=No+Image';
-
                     card.innerHTML = `
                         <img src="${imageSrc}" alt="${dog.name}">
-                        <div>
+                        <div class="dog-info">
                             <h2>${dog.name}</h2>
                             <p><strong>Age:</strong> ${dog.age || 'N/A'}</p>
                             <p>${dog.description || 'No description available.'}</p>
@@ -84,7 +280,7 @@
             },
             error: function(err) {
                 console.error("Error fetching CSV:", err);
-                document.getElementById('dog-list').innerHTML = '<p style="color:red;">Error loading data. Please check the console.</p>';
+                document.getElementById('dog-list').innerHTML = '<p style="color:red;">Error loading data.</p>';
             }
         });
     </script>
