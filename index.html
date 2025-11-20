@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dog Adoption</title>
     <style>
-        /* Simple styling to make it look decent */
         body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
         .dog-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px; display: flex; gap: 20px; }
-        .dog-card img { max-width: 150px; border-radius: 4px; object-fit: cover; }
+        .dog-card img { width: 150px; height: 150px; border-radius: 4px; object-fit: cover; background-color: #eee; }
         select { padding: 10px; width: 100%; margin-top: 5px; }
+        button { margin-top: 10px; padding: 10px 20px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -23,7 +23,7 @@
             <select id="dog-select">
                 <option value="">-- Select a Dog --</option>
             </select>
-            <br><br>
+            <br>
             <button type="submit">Submit Inquiry</button>
         </form>
     </div>
@@ -32,16 +32,15 @@
 
     <h3>Available Dogs</h3>
     <div id="dog-list">
-        <p>Loading dogs...</p>
+        <p>Loading dogs from Google Sheets...</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 
     <script>
-        // 1. URL to your CSV file (relative path works if in same repo)
-        const csvUrl = 'dogs.csv';
+        // YOUR LIVE GOOGLE SHEET URL
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRSn1xYIlsB1bHdNSezkwS81MokP5oeAf59GVE34cehTYCCmObPxDj6hBsQ8Seb9uPwQed34yCVtnui/pub?gid=1163306207&single=true&output=csv';
 
-        // 2. Fetch and Parse the CSV
         Papa.parse(csvUrl, {
             download: true,
             header: true,
@@ -54,29 +53,38 @@
                 dogList.innerHTML = '';
 
                 dogs.forEach(dog => {
-                    // Skip empty rows if any
+                    // Skip empty rows (common in Google Sheets)
                     if(!dog.name) return;
 
-                    // A. ADD TO DROPDOWN
+                    // 1. ADD TO DROPDOWN
                     const option = document.createElement('option');
                     option.value = dog.name;
-                    option.textContent = `${dog.name} (${dog.age} years old)`;
+                    // Handle missing age gracefully
+                    const ageText = dog.age ? ` (${dog.age} years old)` : '';
+                    option.textContent = `${dog.name}${ageText}`;
                     dogSelect.appendChild(option);
 
-                    // B. ADD TO VISUAL LIST
+                    // 2. ADD TO VISUAL LIST
                     const card = document.createElement('div');
                     card.className = 'dog-card';
                     
+                    // Use a placeholder image if the URL is empty
+                    const imageSrc = dog.image ? dog.image : 'https://via.placeholder.com/150?text=No+Image';
+
                     card.innerHTML = `
-                        <img src="${dog.image}" alt="${dog.name}">
+                        <img src="${imageSrc}" alt="${dog.name}">
                         <div>
                             <h2>${dog.name}</h2>
-                            <p><strong>Age:</strong> ${dog.age}</p>
-                            <p>${dog.description}</p>
+                            <p><strong>Age:</strong> ${dog.age || 'N/A'}</p>
+                            <p>${dog.description || 'No description available.'}</p>
                         </div>
                     `;
                     dogList.appendChild(card);
                 });
+            },
+            error: function(err) {
+                console.error("Error fetching CSV:", err);
+                document.getElementById('dog-list').innerHTML = '<p style="color:red;">Error loading data. Please check the console.</p>';
             }
         });
     </script>
