@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dog Adoption</title>
+    <style>
+        /* Simple styling to make it look decent */
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .dog-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px; display: flex; gap: 20px; }
+        .dog-card img { max-width: 150px; border-radius: 4px; object-fit: cover; }
+        select { padding: 10px; width: 100%; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>Adopt a Dog</h1>
+
+    <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 40px;">
+        <h3>Adoption Interest Form</h3>
+        <form>
+            <label for="dog-select">Which dog are you interested in?</label>
+            <select id="dog-select">
+                <option value="">-- Select a Dog --</option>
+            </select>
+            <br><br>
+            <button type="submit">Submit Inquiry</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <h3>Available Dogs</h3>
+    <div id="dog-list">
+        <p>Loading dogs...</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+    <script>
+        // 1. URL to your CSV file (relative path works if in same repo)
+        const csvUrl = 'dogs.csv';
+
+        // 2. Fetch and Parse the CSV
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                const dogs = results.data;
+                const dogList = document.getElementById('dog-list');
+                const dogSelect = document.getElementById('dog-select');
+
+                // Clear "Loading..." text
+                dogList.innerHTML = '';
+
+                dogs.forEach(dog => {
+                    // Skip empty rows if any
+                    if(!dog.name) return;
+
+                    // A. ADD TO DROPDOWN
+                    const option = document.createElement('option');
+                    option.value = dog.name;
+                    option.textContent = `${dog.name} (${dog.age} years old)`;
+                    dogSelect.appendChild(option);
+
+                    // B. ADD TO VISUAL LIST
+                    const card = document.createElement('div');
+                    card.className = 'dog-card';
+                    
+                    card.innerHTML = `
+                        <img src="${dog.image}" alt="${dog.name}">
+                        <div>
+                            <h2>${dog.name}</h2>
+                            <p><strong>Age:</strong> ${dog.age}</p>
+                            <p>${dog.description}</p>
+                        </div>
+                    `;
+                    dogList.appendChild(card);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
